@@ -1,0 +1,45 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "type": "node",
+        "request": "launch",
+        "name": "Debug BE",
+        "skipFiles": ["<node_internals>/**"],
+        "program": "${workspaceFolder}/backend/dist/index.js",
+        "outFiles": ["${workspaceFolder}/dist/**/*.js"],
+        "preLaunchTask": "tsc: build with references"
+      },
+      {
+        "name": "Next.js: debug FE",
+        "type": "node-terminal",
+        "request": "launch",
+        "command": "npm run dev",
+        "cwd": "${file}/..",
+      },
+      {
+        "name": "Next.js: debug userFE",
+        "type": "node-terminal",
+        "request": "launch",
+        "command": "npm run dev",
+        "cwd": "${workspaceFolder}/user-front",
+      },
+      {
+        "name": "Next.js: debug workerFE",
+        "type": "node-terminal",
+        "request": "launch",
+        "command": "npm run dev",
+        "cwd": "${workspaceFolder}/worker-front",
+      },
+    ],
+    "compounds": [
+      {
+        "name": "Run Both Projects",
+        "configurations": [
+          "Debug BE",
+          "Next.js: debug userFE",
+          "Next.js: debug workerFE"
+        ]
+      }
+    ]
+  }

@@ -1,0 +1,16 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "tsc: build with references", // 任务名称
+      "type": "shell", // 使用 shell 执行命令
+      "command": "tsc", // 命令
+      "args": ["-b"], // 参数，-b 表示构建项目及其引用
+      "options": {
+        "cwd": "${workspaceFolder}/backend" // 指定工作目录为 /backend
+      },
+      "problemMatcher": ["$tsc"], // 使用 TypeScript 问题匹配器
+      "detail": "Build TypeScript project and its references"
+    }
+  ]
+}
