@@ -7,11 +7,15 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useWallet, useConnection } from "@solana/wallet-adapter-react";
 
+// in this page, user needs to firstly make payment
+// after treansaction is confirmed, we get the transation signature
+// then user can click submit button to submit the task with signature
 export const Upload = () => {
   const [images, setImages] = useState<string[]>([]);
   const [title, setTitle] = useState("");
-  let [txSignature, setTxSignature] = useState("");
+  const [txSignature, setTxSignature] = useState("");
   const { publicKey, sendTransaction } = useWallet();
+  const { connection } = useConnection();
   const router = useRouter();
   async function onSubmit() {
     const response = await axios.post(
@@ -32,8 +36,11 @@ export const Upload = () => {
 
     router.push(`/task/${response.data.createdTaskID}`);
   }
-
+  
   async function makePayment() {
+    console.log("make payment");
+    console.log(publicKey);
+    console.log(process.env.NEXT_PUBLIC_SERVER_WALLET_ADDRESS);
     const transaction = new Transaction().add(
       SystemProgram.transfer({
         fromPubkey: publicKey!,
@@ -41,7 +48,23 @@ export const Upload = () => {
         lamports: 100000000,
       })
     );
+    const {
+      context: { slot: minContextSlot },
+      value: { blockhash, lastValidBlockHeight },
+    } = await connection.getLatestBlockhashAndContext();
+    // phantom will pop up here
+    const signature = await sendTransaction(transaction, connection, {
+      minContextSlot,
+    });
+    console.log("signature", signature);
+    await connection.confirmTransaction({
+      blockhash,
+      lastValidBlockHeight,
+      signature,
+    });
+    setTxSignature(signature);
   }
+
   return (
     <div className="flex justify-center">
       <div className="max-w-screen-lg w-full">
