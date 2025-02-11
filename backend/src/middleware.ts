@@ -9,15 +9,12 @@ export function userMiddleware(
 ): void {
   const authHeader = req.headers.authorization ?? "";
   try {
-    console.log(authHeader);
     const decoded = jwt.verify(authHeader, config.USER_JWT_SECRET);
-    console.log(decoded);
     // @ts-ignore
     if (decoded.userId) {
       // @ts-ignore
       req.userId = decoded.userId;
       // @ts-ignore
-      console.log(decoded.userId);
       next();
     } else {
       res.status(403).json({ message: "you are not logged in" });

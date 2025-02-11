@@ -10,7 +10,7 @@ import {
 import { WalletAdapterNetwork } from "@solana/wallet-adapter-base";
 
 export default function Home() {
-  const network = WalletAdapterNetwork.Mainnet;
+  const network = WalletAdapterNetwork.Devnet;
 
   // You can also provide a custom RPC endpoint.
   const endpoint = process.env.NEXT_PUBLIC_SOLANA_RPC_ENDPOINT!;

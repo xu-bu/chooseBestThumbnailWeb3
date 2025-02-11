@@ -1,5 +1,9 @@
 "use client";
-import { PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
+import {
+  PublicKey,
+  SystemProgram,
+  Transaction,
+} from "@solana/web3.js";
 import { UploadImage } from "@/components/UploadImage";
 import { BACKEND_URL } from "@/utils/index";
 import axios from "axios";
@@ -7,11 +11,15 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useWallet, useConnection } from "@solana/wallet-adapter-react";
 
+// in this page, user needs to firstly make payment
+// after treansaction is confirmed, we get the transation signature
+// then user can click submit button to submit the task with signature
 export const Upload = () => {
   const [images, setImages] = useState<string[]>([]);
   const [title, setTitle] = useState("");
-  let [txSignature, setTxSignature] = useState("");
+  const [txSignature, setTxSignature] = useState("");
   const { publicKey, sendTransaction } = useWallet();
+  const { connection } = useConnection();
   const router = useRouter();
   async function onSubmit() {
     const response = await axios.post(
@@ -34,6 +42,9 @@ export const Upload = () => {
   }
 
   async function makePayment() {
+    console.log("make payment");
+    console.log(publicKey);
+    console.log(process.env.NEXT_PUBLIC_SERVER_WALLET_ADDRESS);
     const transaction = new Transaction().add(
       SystemProgram.transfer({
         fromPubkey: publicKey!,
@@ -41,7 +52,30 @@ export const Upload = () => {
         lamports: 100000000,
       })
     );
+    const {
+      context: { slot: minContextSlot },
+    } = await connection.getLatestBlockhashAndContext();
+    // phantom will pop up here
+    const signature = await sendTransaction(transaction, connection, {
+      minContextSlot,
+    });
+    // wait for the transaction to be confirmed
+    let status = await connection.getSignatureStatus(signature);
+
+    while (
+      status.value === null ||
+      status.value?.confirmationStatus ==="processed"
+    ) {
+      console.log("Transaction is still pending...");
+      await new Promise((resolve) => setTimeout(resolve, 500)); // check it every 500ms
+      status = await connection.getSignatureStatus(signature);
+    }
+    if (status.value?.err) {
+      throw status.value?.err;
+    }
+    setTxSignature(signature);
   }
+
   return (
     <div className="flex justify-center">
       <div className="max-w-screen-lg w-full">

@@ -17,6 +17,7 @@ const s3Client = new S3Client({
   },
   region: config.awsRegion,
 });
+const connection = new Connection(process.env.RPC_URL ?? "");
 
 const router = Router();
 
@@ -40,7 +41,7 @@ router.post("/signin", async (req, res) => {
       data: { address: publicKey },
     });
   }
-  
+
   const token = jwt.sign({ userId: existingUser.id }, config.USER_JWT_SECRET);
   res.json({ token });
 });
@@ -118,17 +119,49 @@ router.post(
   async (req: Request, res: Response): Promise<void> => {
     // @ts-ignore
     const userId = req.userId;
-    console.log("userId", userId);
+    const user=await prismaClient.user.findFirst({where:{id:Number(userId)}});
     // @ts-ignore
     const body = req.body;
-    console.dir("body", body);
     const parseData = createTaskInput.safeParse(body);
+
     if (!parseData.success) {
       res
         .status(411)
         .json({ msg: "failed to parse input", error: parseData.error });
       return;
     }
+    //check if the transaction is valid
+    const transaction = await connection.getTransaction(
+      parseData.data.signature,
+      {
+        maxSupportedTransactionVersion: 1,
+      }
+    );
+    // check if the amount is correct
+    const moneyReceived =
+      (transaction?.meta?.postBalances[1] ?? 0) -
+      (transaction?.meta?.preBalances[1] ?? 0);
+
+    if (moneyReceived !== 0.1 * config.lamportsConverter) {
+      res.status(411).json({ msg: "Transaction signature/amount incorrect" });
+      return;
+    }
+    //check if transaction paid/sent with wrong address
+    const payerAddress = transaction?.transaction?.message.getAccountKeys().get(0)?.toString()??"";
+    const receiverAddres = transaction?.transaction?.message.getAccountKeys().get(1)?.toString()??"";
+
+    console.log("payerAddress",payerAddress);
+    console.log("receiverAddres",receiverAddres);
+    console.log("the user is ",user?.address);
+    if(receiverAddres!==process.env.PARENT_ADDRESS){
+      res.status(411).json({ msg: "Transaction sent to wrong address" });
+      return;
+    }
+    if(payerAddress!==user?.address){
+      res.status(411).json({ msg: "Transaction with wrong payer" });
+      return;
+    }
+
     const txRes = await prismaClient.$transaction(async (tx) => {
       const createTaskRes = await tx.task.create({
         data: {
