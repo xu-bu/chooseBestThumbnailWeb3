@@ -1,6 +1,6 @@
 'use client'
 
-import React, { use, useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { BACKEND_URL } from "../utils/index";
 
@@ -24,7 +24,7 @@ export const NextTask = () => {
     axios
       .get(`${BACKEND_URL}/v1/worker/getNextTask`, {
         headers: {
-          Authorization: localStorage.getItem("workerToken"),
+          Authorization: localStorage.getItem("token"),
         },
       })
       .then((response) => {
@@ -54,7 +54,7 @@ export const NextTask = () => {
                         selection: option.id.toString()
                     }, {
                         headers: {
-                            "Authorization": localStorage.getItem("workerToken")
+                            "Authorization": localStorage.getItem("token")
                         }
                     });
     

@@ -165,7 +165,7 @@ router.post(
     const txRes = await prismaClient.$transaction(async (tx) => {
       const createTaskRes = await tx.task.create({
         data: {
-          amount: 1 * config.lamportsConverter,
+          amount: 0.1 * config.lamportsConverter,
           title: parseData.data.title ?? config.defaultTaskTitle,
           user_id: userId,
           signature: parseData.data.signature,

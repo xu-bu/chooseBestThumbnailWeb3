@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useMemo } from "react";
-import { clusterApiUrl, PublicKey } from "@solana/web3.js";
+import { clusterApiUrl } from "@solana/web3.js";
 import { 
     ConnectionProvider, 
     WalletProvider, 
@@ -9,9 +9,6 @@ import {
 } from "@solana/wallet-adapter-react";
 import { WalletModalProvider, WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { PhantomWalletAdapter } from "@solana/wallet-adapter-wallets";
-
-// 引入 Wallet UI 样式（必须）
-import "@solana/wallet-adapter-react-ui/styles.css";
 
 const WalletInfo = () => {
     const { publicKey, connected, disconnect } = useWallet();

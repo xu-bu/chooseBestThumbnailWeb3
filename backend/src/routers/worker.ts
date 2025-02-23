@@ -1,36 +1,40 @@
+import nacl from "tweetnacl";
 import { Router, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { PrismaClient } from "@prisma/client";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import config from "../const";
 import { userMiddleware, workerMiddleware } from "../middleware";
 import { createSubmissionInput } from "../types";
 import { getNextTask } from "../db";
+import { Connection, PublicKey, Transaction } from "@solana/web3.js";
 
-// fake it here
+// we assume 100 people voted, then reward will be devided by 100
 const TOTAL_SUBMISSIONS = 100;
-
 const prismaClient = new PrismaClient();
-const client = new S3Client({
-  credentials: {
-    accessKeyId: config.accessKey,
-    secretAccessKey: config.accessSecret,
-  },
-  region: config.awsRegion,
-});
-
 const router = Router();
 
 router.post("/signin", async (req, res) => {
-  const hardcodedWalletAddress = "xxxxxxxx";
+  const { publicKey, signature } = req.body;
+  const message = new TextEncoder().encode(
+    "Sign into mechanical turks as a worker"
+  );
+  const result = nacl.sign.detached.verify(
+    message,
+    new Uint8Array(signature.data),
+    new PublicKey(publicKey).toBytes()
+  );
+  if (!result) {
+    res.status(411).json({ message: "Incorrect signature" });
+  }
+
   let existingWorker = await prismaClient.worker.findFirst({
-    where: { address: hardcodedWalletAddress },
+    where: { address: publicKey },
   });
+
   if (!existingWorker) {
     existingWorker = await prismaClient.worker.create({
       data: {
-        address: hardcodedWalletAddress,
+        address: publicKey,
         pending_amount: 0,
         locked_amount: 0,
       },
@@ -40,7 +44,10 @@ router.post("/signin", async (req, res) => {
     { workerId: existingWorker.id },
     config.WORKER_JWT_SECRET
   );
-  res.json({ token });
+  res.json({
+    token,
+    amount: existingWorker.pending_amount / config.lamportsConverter,
+  });
 });
 
 router.get("/getNextTask", workerMiddleware, async (req, res) => {
@@ -74,12 +81,10 @@ router.get("/balance", workerMiddleware, async (req, res) => {
     res.status(411).json({ msg: "wrong jwt token" });
     return;
   }
-  res
-    .status(200)
-    .json({
-      pendingAmount: worker.pending_amount,
-      lockedAmount: worker.locked_amount,
-    });
+  res.status(200).json({
+    pendingAmount: worker.pending_amount,
+    lockedAmount: worker.locked_amount,
+  });
 });
 
 router.post("/submission", workerMiddleware, async (req, res) => {
@@ -138,7 +143,7 @@ router.post("/payout", workerMiddleware, async (req, res) => {
     return;
   }
   const address = worker.address;
-  const txnId="txnId";
+  const txnId = "txnId";
   const pendingAmount = worker.pending_amount;
   await prismaClient.$transaction(async (tx) => {
     await tx.worker.update({
