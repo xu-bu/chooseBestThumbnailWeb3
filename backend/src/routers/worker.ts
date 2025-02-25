@@ -6,7 +6,15 @@ import config from "../const";
 import { userMiddleware, workerMiddleware } from "../middleware";
 import { createSubmissionInput } from "../types";
 import { getNextTask } from "../db";
-import { Connection, PublicKey, Transaction } from "@solana/web3.js";
+import {
+  Connection,
+  PublicKey,
+  Transaction,
+  SystemProgram,
+  Keypair,
+  sendAndConfirmTransaction,
+} from "@solana/web3.js";
+import bs58 from "bs58";
 
 // we assume 100 people voted, then reward will be devided by 100
 const TOTAL_SUBMISSIONS = 100;
@@ -143,8 +151,28 @@ router.post("/payout", workerMiddleware, async (req, res) => {
     return;
   }
   const address = worker.address;
-  const txnId = "txnId";
   const pendingAmount = worker.pending_amount;
+  const transaction = new Transaction().add(
+    SystemProgram.transfer({
+      fromPubkey: new PublicKey(config.serverPublicKey),
+      toPubkey: new PublicKey(address),
+      lamports: pendingAmount,
+    })
+  );
+  const keyPair = Keypair.fromSecretKey(bs58.decode(config.serverPrivateKey));
+  const connection = new Connection(config.RPC_URL);
+  let signature;
+  try {
+    signature = await sendAndConfirmTransaction(connection, transaction, [
+      keyPair,
+    ]);
+  } catch (e) {
+    res.json({
+      message: "Transaction failed",
+    });
+    return;
+  }
+
   await prismaClient.$transaction(async (tx) => {
     await tx.worker.update({
       where: {
@@ -163,7 +191,7 @@ router.post("/payout", workerMiddleware, async (req, res) => {
       data: {
         user_id: workerId,
         amount: pendingAmount,
-        signature: txnId,
+        signature,
         status: "Processing",
       },
     });

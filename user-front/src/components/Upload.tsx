@@ -42,9 +42,6 @@ export const Upload = () => {
   }
 
   async function makePayment() {
-    console.log("make payment");
-    console.log(publicKey);
-    console.log(process.env.NEXT_PUBLIC_SERVER_WALLET_ADDRESS);
     const transaction = new Transaction().add(
       SystemProgram.transfer({
         fromPubkey: publicKey!,

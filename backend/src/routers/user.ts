@@ -17,7 +17,7 @@ const s3Client = new S3Client({
   },
   region: config.awsRegion,
 });
-const connection = new Connection(process.env.RPC_URL ?? "");
+const connection = new Connection(config.RPC_URL!);
 
 const router = Router();
 
